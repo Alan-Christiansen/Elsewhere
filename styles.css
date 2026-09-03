@@ -1,0 +1,13 @@
+.url-note-subtle {
+	color: var(--text-muted);
+	font-size: var(--font-ui-small);
+	margin-top: -0.4em;
+}
+
+.url-note-wide-input {
+	width: 100%;
+}
+
+.url-note-invalid {
+	border-color: var(--text-error);
+}
