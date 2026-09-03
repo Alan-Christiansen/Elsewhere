@@ -1,11 +1,26 @@
+.url-note-field {
+	margin-bottom: 0.9em;
+}
+
+.url-note-field-label {
+	display: block;
+	margin-bottom: 0.35em;
+	color: var(--text-normal);
+	font-size: var(--font-ui-small);
+}
+
+.url-note-field-input {
+	width: 100%;
+}
+
 .url-note-subtle {
 	color: var(--text-muted);
 	font-size: var(--font-ui-small);
-	margin-top: -0.4em;
 }
 
-.url-note-wide-input {
-	width: 100%;
+.url-note-destination {
+	margin-top: 0;
+	margin-bottom: 0;
 }
 
 .url-note-invalid {

@@ -1,7 +1,8 @@
-import { App, Modal, Notice, Setting, TFolder, normalizePath } from "obsidian";
+import { App, ButtonComponent, Modal, Notice, TFolder, normalizePath } from "obsidian";
 
 import { EXTENSION, resolveCollision, suggestBaseName } from "./filename.ts";
 import { createShortcut } from "./shortcut.ts";
+import { addModalField } from "./ui.ts";
 import { isSupportedUrl } from "./url.ts";
 
 /**
@@ -33,7 +34,7 @@ export class CreateUrlNoteModal extends Modal {
 		const { contentEl } = this;
 		contentEl.empty();
 
-		contentEl.createEl("h2", { text: "New URL note" });
+		this.titleEl.setText("New URL note");
 
 		const hasClipboardUrl = isSupportedUrl(this.clipboardUrl);
 		if (hasClipboardUrl) {
@@ -41,52 +42,45 @@ export class CreateUrlNoteModal extends Modal {
 			this.name = suggestBaseName(this.url);
 		}
 
-		new Setting(contentEl).setName("Name").addText((text) => {
-			this.nameInput = text.inputEl;
-			text
-				.setPlaceholder("URL Note")
-				.setValue(this.name)
-				.onChange((next) => {
-					this.name = next;
-					this.nameIsSuggested = false;
-				});
-			text.inputEl.addClass("url-note-wide-input");
+		const nameField = addModalField(contentEl, "Name", "URL Note");
+		this.nameInput = nameField.input;
+		nameField.input.value = this.name;
+		nameField.input.addEventListener("input", () => {
+			this.name = nameField.input.value;
+			this.nameIsSuggested = false;
 		});
 
-		new Setting(contentEl).setName("URL").addText((text) => {
-			this.urlInput = text.inputEl;
-			text
-				.setPlaceholder("https://example.com/")
-				.setValue(this.url)
-				.onChange((next) => {
-					this.url = next;
-					if (this.nameIsSuggested && isSupportedUrl(next)) {
-						this.name = suggestBaseName(next);
-						if (this.nameInput) this.nameInput.value = this.name;
-					}
-					this.urlInput?.toggleClass(
-						"url-note-invalid",
-						next.trim().length > 0 && !isSupportedUrl(next),
-					);
-				});
-			text.inputEl.addClass("url-note-wide-input");
+		const urlField = addModalField(contentEl, "URL", "https://example.com/");
+		this.urlInput = urlField.input;
+		urlField.input.value = this.url;
+		urlField.input.addEventListener("input", () => {
+			this.url = urlField.input.value;
+			if (this.nameIsSuggested && isSupportedUrl(this.url)) {
+				this.name = suggestBaseName(this.url);
+				nameField.input.value = this.name;
+			}
+			urlField.setInvalid(
+				this.url.trim().length > 0 && !isSupportedUrl(this.url),
+			);
 		});
 
 		contentEl.createEl("p", {
-			text: "Saving to " + (this.folder.path === "/" ? "vault root" : this.folder.path),
-			cls: "url-note-subtle",
+			text:
+				"Saving to " +
+				(this.folder.path === "/" ? "vault root" : this.folder.path),
+			cls: "url-note-subtle url-note-destination",
 		});
 
-		new Setting(contentEl)
-			.addButton((button) =>
-				button.setButtonText("Cancel").onClick(() => this.close()),
-			)
-			.addButton((button) =>
-				button
-					.setButtonText("Create")
-					.setCta()
-					.onClick(() => void this.create()),
-			);
+		const buttons = contentEl.createDiv({ cls: "modal-button-container" });
+
+		new ButtonComponent(buttons)
+			.setButtonText("Create")
+			.setCta()
+			.onClick(() => void this.create());
+
+		new ButtonComponent(buttons)
+			.setButtonText("Cancel")
+			.onClick(() => this.close());
 
 		this.scope.register([], "Enter", (event) => {
 			event.preventDefault();
@@ -129,7 +123,9 @@ export class CreateUrlNoteModal extends Modal {
 			this.close();
 		} catch (error) {
 			console.error("URL Note: could not create shortcut", error);
-			new Notice("Could not create the shortcut. Check the name for invalid characters.");
+			new Notice(
+				"Could not create the shortcut. Check the name for invalid characters.",
+			);
 		}
 	}
 

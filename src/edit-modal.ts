@@ -1,6 +1,7 @@
-import { App, Modal, Notice, Setting, TFile } from "obsidian";
+import { App, ButtonComponent, Modal, Notice, TFile } from "obsidian";
 
 import { parseShortcut, withUrl } from "./shortcut.ts";
+import { addModalField } from "./ui.ts";
 import { isSupportedUrl } from "./url.ts";
 
 /**
@@ -35,33 +36,36 @@ export class EditUrlNoteModal extends Modal {
 
 		this.value = parseShortcut(this.raw).url;
 
-		contentEl.createEl("h2", { text: "Edit URL note" });
+		this.titleEl.setText("Edit URL note");
+
+		const destination = addModalField(
+			contentEl,
+			"Destination",
+			"https://example.com/",
+		);
+		destination.input.value = this.value;
+		destination.input.addEventListener("input", () => {
+			this.value = destination.input.value;
+			destination.setInvalid(
+				this.value.trim().length > 0 && !isSupportedUrl(this.value),
+			);
+		});
+
 		contentEl.createEl("p", {
 			text: this.file.name,
-			cls: "url-note-subtle",
+			cls: "url-note-subtle url-note-destination",
 		});
 
-		let urlInput: HTMLInputElement | null = null;
+		const buttons = contentEl.createDiv({ cls: "modal-button-container" });
 
-		new Setting(contentEl).setName("Destination").addText((text) => {
-			urlInput = text.inputEl;
-			text.setValue(this.value).onChange((next) => {
-				this.value = next;
-				this.updateValidity(urlInput);
-			});
-			text.inputEl.addClass("url-note-wide-input");
-		});
+		new ButtonComponent(buttons)
+			.setButtonText("Save")
+			.setCta()
+			.onClick(() => void this.save());
 
-		new Setting(contentEl)
-			.addButton((button) =>
-				button.setButtonText("Cancel").onClick(() => this.close()),
-			)
-			.addButton((button) =>
-				button
-					.setButtonText("Save")
-					.setCta()
-					.onClick(() => void this.save()),
-			);
+		new ButtonComponent(buttons)
+			.setButtonText("Cancel")
+			.onClick(() => this.close());
 
 		this.scope.register([], "Enter", (event) => {
 			event.preventDefault();
@@ -70,15 +74,9 @@ export class EditUrlNoteModal extends Modal {
 		});
 
 		window.setTimeout(() => {
-			urlInput?.focus();
-			urlInput?.select();
+			destination.input.focus();
+			destination.input.select();
 		}, 0);
-	}
-
-	private updateValidity(input: HTMLInputElement | null): void {
-		if (!input) return;
-		const valid = this.value.trim().length === 0 || isSupportedUrl(this.value);
-		input.toggleClass("url-note-invalid", !valid);
 	}
 
 	private async save(): Promise<void> {
