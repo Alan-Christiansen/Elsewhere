@@ -33,21 +33,54 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
  */
 const UNINFORMATIVE_SEGMENTS = new Set([
 	"edit", "view", "preview", "index", "home", "default", "main",
-	"new", "create", "open", "share", "d", "p", "e", "u", "www",
+	"new", "create", "open", "share", "www", "api", "app", "page",
+	"file", "files", "item", "items", "content", "public",
 ]);
+
+/** Version and locale segments: /v2/, /en/, /en-us/. */
+const VERSION_OR_LOCALE = /^(v\d+|[a-z]{2}([-_][a-z]{2})?)$/i;
 
 /**
  * True when a path segment looks generated rather than human-readable: a
  * numeric id, a UUID, a hash, or an unbroken run of characters long enough
  * that it cannot be a title.
  */
+/**
+ * True when a segment reads like separated words rather than an identifier.
+ * Generated ids often contain underscores, so the presence of a separator is
+ * not enough on its own; each part also has to be short enough to be a word.
+ */
+function looksLikeWords(segment: string): boolean {
+	const parts = segment.split(/[-_\s]+/).filter((part) => part.length > 0);
+	if (parts.length < 2) return false;
+	if (!parts.some((part) => /[a-z]/i.test(part))) return false;
+	return parts.every((part) => part.length <= 12 && /^[a-z0-9]+$/i.test(part));
+}
+
+/**
+ * True when a path segment looks generated rather than human-readable: a
+ * numeric id, a UUID, a hash, a mixed-case alphanumeric token, or an
+ * unbroken run too long to be a title.
+ */
 export function isOpaqueSegment(segment: string): boolean {
-	if (segment.length === 0) return true;
+	if (segment.length < 2) return true;
 	if (!/[a-z]/i.test(segment)) return true;
+	if (VERSION_OR_LOCALE.test(segment)) return true;
 	if (UUID.test(segment)) return true;
 	if (/^[0-9a-f]{8,}$/i.test(segment)) return true;
-	if (segment.length > 24 && !/[-_\s.]/.test(segment)) return true;
 	if (UNINFORMATIVE_SEGMENTS.has(segment.toLowerCase())) return true;
+
+	if (looksLikeWords(segment)) return false;
+
+	// Long unbroken token: an identifier, not a title.
+	if (segment.length > 24) return true;
+	// Mixed case with digits mixed in: a generated key.
+	if (/\d/.test(segment) && /[a-z]/.test(segment) && /[A-Z]/.test(segment)) {
+		return true;
+	}
+	// Leading digits with letters attached: a record id.
+	if (/^\d/.test(segment) && segment.length > 4) return true;
+
 	return false;
 }
 
@@ -78,6 +111,20 @@ export function sanitizeBase(input: string): string {
 	return base;
 }
 
+/**
+ * Drops a trailing id from an otherwise readable slug. Notion and similar
+ * services append a hash to the page title: `My-Page-2f8a91bc4d6e`.
+ */
+function trimTrailingId(segment: string): string {
+	const parts = segment.split(/[-_]/);
+	if (parts.length < 2) return segment;
+	const last = parts[parts.length - 1];
+	if (/^[0-9a-f]{8,}$/i.test(last) || /^\d{6,}$/.test(last)) {
+		return parts.slice(0, -1).join("-");
+	}
+	return segment;
+}
+
 function decodeSegment(segment: string): string {
 	try {
 		return decodeURIComponent(segment);
@@ -86,20 +133,28 @@ function decodeSegment(segment: string): string {
 	}
 }
 
+/**
+ * Walks the path from right to left and returns the first segment that reads
+ * like a label rather than an identifier.
+ *
+ * Looking only at the final segment is not enough in practice. A Google
+ * Sheets URL ends `/spreadsheets/d/<id>/edit`, where the last three segments
+ * are all uninformative but `spreadsheets` describes what the shortcut points
+ * at. Walking back finds it.
+ */
 function lastMeaningfulSegment(pathname: string): string | null {
 	const segments = pathname
 		.split("/")
 		.filter((segment) => segment.length > 0)
-		.map(decodeSegment);
+		.map(decodeSegment)
+		.map((segment) => segment.replace(STRIPPABLE_PAGE_EXTENSIONS, ""));
 
-	if (segments.length === 0) return null;
+	for (let index = segments.length - 1; index >= 0; index--) {
+		const segment = segments[index];
+		if (!isOpaqueSegment(segment)) return trimTrailingId(segment);
+	}
 
-	const last = segments[segments.length - 1].replace(
-		STRIPPABLE_PAGE_EXTENSIONS,
-		"",
-	);
-	if (isOpaqueSegment(last)) return null;
-	return last;
+	return null;
 }
 
 /**

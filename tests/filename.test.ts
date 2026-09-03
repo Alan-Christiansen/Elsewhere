@@ -115,6 +115,10 @@ test("opaque segment detection", () => {
 	assert.equal(isOpaqueSegment("12345"), true);
 	assert.equal(isOpaqueSegment(""), true);
 	assert.equal(isOpaqueSegment("---"), true);
+	assert.equal(isOpaqueSegment("d"), true);
+	assert.equal(isOpaqueSegment("v2"), true);
+	assert.equal(isOpaqueSegment("en"), true);
+	assert.equal(isOpaqueSegment("spreadsheets"), false);
 	assert.equal(isOpaqueSegment("getting-started"), false);
 	assert.equal(isOpaqueSegment("edit"), true); // uninformative
 	assert.equal(isOpaqueSegment("install"), false);
@@ -131,5 +135,65 @@ test("collisions append the next available suffix", () => {
 	assert.equal(
 		resolveCollision("Fresh", (name) => taken.has(name)),
 		"Fresh.url",
+	);
+});
+
+test("the walk-back rule names Google documents by kind", () => {
+	assert.equal(
+		suggestBaseName(
+			"https://docs.google.com/spreadsheets/d/1KLO53VVqHfDuPgHYe_X8MLoXR61Gcb7DDXESh9aPfsY/edit?usp=sharing",
+		),
+		"docs.google.com - spreadsheets",
+	);
+	assert.equal(
+		suggestBaseName("https://docs.google.com/document/d/1AbCdEfGhIjKlMnOpQrStUv/edit"),
+		"docs.google.com - document",
+	);
+	assert.equal(
+		suggestBaseName("https://docs.google.com/presentation/d/1AbCdEfGhIjKlMnOpQrStUv/edit"),
+		"docs.google.com - presentation",
+	);
+});
+
+test("the walk-back rule stops at the first meaningful segment", () => {
+	assert.equal(suggestBaseName("https://example.com/docs/index"), "example.com - docs");
+	assert.equal(suggestBaseName("https://example.com/notes/view"), "example.com - notes");
+	assert.equal(suggestBaseName("https://example.com/editor"), "example.com - editor");
+});
+
+test("walk-back does not invent a name when nothing is meaningful", () => {
+	assert.equal(suggestBaseName("https://example.com/d/12345/edit"), "example.com");
+	assert.equal(suggestBaseName("https://example.com/v2/en/index"), "example.com");
+});
+
+test("version and locale segments are skipped", () => {
+	assert.equal(suggestBaseName("https://example.com/v2/reports/9912"), "example.com - reports");
+	assert.equal(suggestBaseName("https://example.com/en-us/pricing"), "example.com - pricing");
+});
+
+test("single-character and identifier segments are opaque", () => {
+	assert.equal(isOpaqueSegment("d"), true);
+	assert.equal(isOpaqueSegment("v2"), true);
+	assert.equal(isOpaqueSegment("en"), true);
+	assert.equal(isOpaqueSegment("spreadsheets"), false);
+});
+
+test("numeric words survive when paired with a real word", () => {
+	assert.equal(suggestBaseName("https://example.com/2026-review"), "example.com - 2026-review");
+	assert.equal(suggestBaseName("https://example.com/q3-2026-results"), "example.com - q3-2026-results");
+});
+
+test("generated document ids never become names", () => {
+	assert.equal(
+		suggestBaseName("https://example.com/docs/1KLO53VVqHfDuPgHYe_X8MLoXR61Gcb7DDXESh9aPfsY"),
+		"example.com - docs",
+	);
+	assert.equal(suggestBaseName("https://airtable.com/appXY12/tblAb34/viwCd56"), "airtable.com");
+});
+
+test("a trailing hash is trimmed from a readable slug", () => {
+	assert.equal(
+		suggestBaseName("https://notion.so/My-Page-2f8a91bc4d6e"),
+		"notion.so - My-Page",
 	);
 });
