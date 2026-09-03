@@ -40,7 +40,7 @@ export async function openDestination(url: string): Promise<void> {
 	try {
 		await shell.openExternal(url);
 	} catch (error) {
-		console.error("URL Note: failed to open destination", error);
+		console.error("Elsewhere: failed to open destination", error);
 		new Notice("Could not open this destination.");
 	}
 }

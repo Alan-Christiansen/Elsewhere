@@ -3,7 +3,7 @@ import { TFile, TextFileView, WorkspaceLeaf } from "obsidian";
 import { openDestination } from "./launch.ts";
 import { parseShortcut } from "./shortcut.ts";
 
-export const VIEW_TYPE_URL_NOTE = "url-note-view";
+export const VIEW_TYPE_SHORTCUT = "elsewhere-shortcut-view";
 
 /**
  * Registering the `.url` extension is what makes shortcuts visible in the
@@ -16,7 +16,7 @@ export const VIEW_TYPE_URL_NOTE = "url-note-view";
  * the right-arrow key opens a file, so ordinary up/down navigation in the
  * File Explorer does not fire a launch.
  */
-export class UrlNoteLauncherView extends TextFileView {
+export class ShortcutLauncherView extends TextFileView {
 	data = "";
 
 	constructor(leaf: WorkspaceLeaf) {
@@ -24,7 +24,7 @@ export class UrlNoteLauncherView extends TextFileView {
 	}
 
 	getViewType(): string {
-		return VIEW_TYPE_URL_NOTE;
+		return VIEW_TYPE_SHORTCUT;
 	}
 
 	getDisplayText(): string {
@@ -60,7 +60,7 @@ export class UrlNoteLauncherView extends TextFileView {
 			try {
 				leaf.detach();
 			} catch (error) {
-				console.error("URL Note: could not close the launcher tab", error);
+				console.error("Elsewhere: could not close the launcher tab", error);
 			}
 		}, 0);
 	}

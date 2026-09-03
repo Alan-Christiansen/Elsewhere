@@ -1,28 +1,28 @@
-.url-note-field {
+.elsewhere-field {
 	margin-bottom: 0.9em;
 }
 
-.url-note-field-label {
+.elsewhere-field-label {
 	display: block;
 	margin-bottom: 0.35em;
 	color: var(--text-normal);
 	font-size: var(--font-ui-small);
 }
 
-.url-note-field-input {
+.elsewhere-field-input {
 	width: 100%;
 }
 
-.url-note-subtle {
+.elsewhere-subtle {
 	color: var(--text-muted);
 	font-size: var(--font-ui-small);
 }
 
-.url-note-destination {
+.elsewhere-destination {
 	margin-top: 0;
 	margin-bottom: 0;
 }
 
-.url-note-invalid {
+.elsewhere-invalid {
 	border-color: var(--text-error);
 }

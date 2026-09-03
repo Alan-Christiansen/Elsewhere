@@ -6,35 +6,35 @@ import {
 	TFolder,
 } from "obsidian";
 
-import { CreateUrlNoteModal } from "./create-modal.ts";
-import { EditUrlNoteModal } from "./edit-modal.ts";
+import { CreateShortcutModal } from "./create-modal.ts";
+import { EditShortcutModal } from "./edit-modal.ts";
 import { EXTENSION } from "./filename.ts";
-import { UrlNoteLauncherView, VIEW_TYPE_URL_NOTE } from "./launcher-view.ts";
+import { ShortcutLauncherView, VIEW_TYPE_SHORTCUT } from "./launcher-view.ts";
 
-export default class UrlNotePlugin extends Plugin {
+export default class ElsewherePlugin extends Plugin {
 	async onload(): Promise<void> {
 		this.registerView(
-			VIEW_TYPE_URL_NOTE,
-			(leaf) => new UrlNoteLauncherView(leaf),
+			VIEW_TYPE_SHORTCUT,
+			(leaf) => new ShortcutLauncherView(leaf),
 		);
 
 		// Makes .url files visible in the File Explorer without requiring the
 		// user to enable Obsidian's "Detect all file extensions" setting. The
 		// on-disk file is untouched and stays a standard Internet Shortcut.
 		try {
-			this.registerExtensions([EXTENSION], VIEW_TYPE_URL_NOTE);
+			this.registerExtensions([EXTENSION], VIEW_TYPE_SHORTCUT);
 		} catch (error) {
-			console.error("URL Note: could not register the .url extension", error);
+			console.error("Elsewhere: could not register the .url extension", error);
 			new Notice(
-				"URL Note: another plugin has already claimed .url files. " +
-					"Disable it to use URL Note.",
+				"Elsewhere: another plugin has already claimed .url files. " +
+					"Disable it to use Elsewhere.",
 				10000,
 			);
 		}
 
 		this.addCommand({
-			id: "create-url-note",
-			name: "New URL note",
+			id: "new-shortcut",
+			name: "New shortcut",
 			callback: () => void this.openCreateModal(this.defaultFolder()),
 		});
 
@@ -43,7 +43,7 @@ export default class UrlNotePlugin extends Plugin {
 				if (target instanceof TFolder) {
 					menu.addItem((item) =>
 						item
-							.setTitle("New URL note")
+							.setTitle("New shortcut")
 							.setIcon("link")
 							.onClick(() => void this.openCreateModal(target)),
 					);
@@ -54,7 +54,7 @@ export default class UrlNotePlugin extends Plugin {
 
 				menu.addItem((item) =>
 					item
-						.setTitle("New URL note")
+						.setTitle("New shortcut")
 						.setIcon("link")
 						.onClick(() =>
 							void this.openCreateModal(this.parentOf(target)),
@@ -64,9 +64,9 @@ export default class UrlNotePlugin extends Plugin {
 				if (target.extension === EXTENSION) {
 					menu.addItem((item) =>
 						item
-							.setTitle("Edit URL note...")
+							.setTitle("Edit shortcut...")
 							.setIcon("pencil")
-							.onClick(() => new EditUrlNoteModal(this.app, target).open()),
+							.onClick(() => new EditShortcutModal(this.app, target).open()),
 					);
 				}
 			}),
@@ -97,6 +97,6 @@ export default class UrlNotePlugin extends Plugin {
 			clipboard = "";
 		}
 
-		new CreateUrlNoteModal(this.app, folder, clipboard).open();
+		new CreateShortcutModal(this.app, folder, clipboard).open();
 	}
 }

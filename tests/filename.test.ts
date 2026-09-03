@@ -127,10 +127,10 @@ test("opaque segment detection", () => {
 });
 
 test("collisions append the next available suffix", () => {
-	const taken = new Set(["URL Note.url", "URL Note 2.url"]);
+	const taken = new Set(["Shortcut.url", "Shortcut 2.url"]);
 	assert.equal(
-		resolveCollision("URL Note", (name) => taken.has(name)),
-		"URL Note 3.url",
+		resolveCollision("Shortcut", (name) => taken.has(name)),
+		"Shortcut 3.url",
 	);
 	assert.equal(
 		resolveCollision("Fresh", (name) => taken.has(name)),

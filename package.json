@@ -1,5 +1,5 @@
 {
-  "name": "obsidian-url-note",
+  "name": "obsidian-elsewhere",
   "version": "0.1.0",
   "description": "Create and edit .url Internet Shortcut files without leaving Obsidian.",
   "main": "main.js",

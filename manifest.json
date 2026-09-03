@@ -1,6 +1,6 @@
 {
-  "id": "url-note",
-  "name": "URL Note",
+  "id": "elsewhere",
+  "name": "Elsewhere",
   "version": "0.1.0",
   "minAppVersion": "1.4.0",
   "description": "Create and edit .url Internet Shortcut files without leaving Obsidian.",

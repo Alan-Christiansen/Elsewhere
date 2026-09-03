@@ -18,19 +18,19 @@ export function addModalField(
 	label: string,
 	placeholder: string,
 ): ModalField {
-	const wrapper = parent.createDiv({ cls: "url-note-field" });
-	wrapper.createEl("label", { text: label, cls: "url-note-field-label" });
+	const wrapper = parent.createDiv({ cls: "elsewhere-field" });
+	wrapper.createEl("label", { text: label, cls: "elsewhere-field-label" });
 
 	const input = wrapper.createEl("input", {
 		type: "text",
-		cls: "url-note-field-input",
+		cls: "elsewhere-field-input",
 	});
 	input.placeholder = placeholder;
 
 	return {
 		input,
 		setInvalid(invalid: boolean) {
-			input.toggleClass("url-note-invalid", invalid);
+			input.toggleClass("elsewhere-invalid", invalid);
 		},
 	};
 }

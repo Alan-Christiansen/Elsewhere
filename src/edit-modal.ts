@@ -11,7 +11,7 @@ import { isSupportedUrl } from "./url.ts";
  * Only the `URL=` line is rewritten. Unknown and advanced fields survive
  * untouched, as required by the PRD.
  */
-export class EditUrlNoteModal extends Modal {
+export class EditShortcutModal extends Modal {
 	private readonly file: TFile;
 	private raw = "";
 	private value = "";
@@ -28,7 +28,7 @@ export class EditUrlNoteModal extends Modal {
 		try {
 			this.raw = await this.app.vault.read(this.file);
 		} catch (error) {
-			console.error("URL Note: could not read shortcut", error);
+			console.error("Elsewhere: could not read shortcut", error);
 			new Notice("Could not read this shortcut.");
 			this.close();
 			return;
@@ -36,7 +36,7 @@ export class EditUrlNoteModal extends Modal {
 
 		this.value = parseShortcut(this.raw).url;
 
-		this.titleEl.setText("Edit URL note");
+		this.titleEl.setText("Edit shortcut");
 
 		const destination = addModalField(
 			contentEl,
@@ -53,7 +53,7 @@ export class EditUrlNoteModal extends Modal {
 
 		contentEl.createEl("p", {
 			text: this.file.name,
-			cls: "url-note-subtle url-note-destination",
+			cls: "elsewhere-subtle elsewhere-destination",
 		});
 
 		const buttons = contentEl.createDiv({ cls: "modal-button-container" });
@@ -91,7 +91,7 @@ export class EditUrlNoteModal extends Modal {
 			await this.app.vault.modify(this.file, withUrl(this.raw, next));
 			this.close();
 		} catch (error) {
-			console.error("URL Note: could not save shortcut", error);
+			console.error("Elsewhere: could not save shortcut", error);
 			new Notice("Could not save this shortcut.");
 		}
 	}

@@ -12,7 +12,7 @@ import { isSupportedUrl } from "./url.ts";
  * name, which is fully selected so typing replaces it. Without one, the URL
  * field takes focus and the name is suggested once a valid URL is entered.
  */
-export class CreateUrlNoteModal extends Modal {
+export class CreateShortcutModal extends Modal {
 	private readonly folder: TFolder;
 	private readonly clipboardUrl: string;
 
@@ -34,7 +34,7 @@ export class CreateUrlNoteModal extends Modal {
 		const { contentEl } = this;
 		contentEl.empty();
 
-		this.titleEl.setText("New URL note");
+		this.titleEl.setText("New shortcut");
 
 		const hasClipboardUrl = isSupportedUrl(this.clipboardUrl);
 		if (hasClipboardUrl) {
@@ -42,7 +42,7 @@ export class CreateUrlNoteModal extends Modal {
 			this.name = suggestBaseName(this.url);
 		}
 
-		const nameField = addModalField(contentEl, "Name", "URL Note");
+		const nameField = addModalField(contentEl, "Name", "Shortcut");
 		this.nameInput = nameField.input;
 		nameField.input.value = this.name;
 		nameField.input.addEventListener("input", () => {
@@ -68,7 +68,7 @@ export class CreateUrlNoteModal extends Modal {
 			text:
 				"Saving to " +
 				(this.folder.path === "/" ? "vault root" : this.folder.path),
-			cls: "url-note-subtle url-note-destination",
+			cls: "elsewhere-subtle elsewhere-destination",
 		});
 
 		const buttons = contentEl.createDiv({ cls: "modal-button-container" });
@@ -122,7 +122,7 @@ export class CreateUrlNoteModal extends Modal {
 			new Notice("Created " + file.name);
 			this.close();
 		} catch (error) {
-			console.error("URL Note: could not create shortcut", error);
+			console.error("Elsewhere: could not create shortcut", error);
 			new Notice(
 				"Could not create the shortcut. Check the name for invalid characters.",
 			);

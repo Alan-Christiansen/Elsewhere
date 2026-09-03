@@ -6,7 +6,7 @@ const production = process.argv[2] === "production";
 
 const banner = `/*
 This is a generated file. Do not edit directly.
-Source: https://github.com/<owner>/obsidian-url-note
+Source: https://github.com/Alan-Christiansen/Elsewhere
 */
 `;
 

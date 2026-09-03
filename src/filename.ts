@@ -5,7 +5,7 @@
  * components, never from a fetched page title.
  */
 
-export const FALLBACK_BASE = "URL Note";
+export const FALLBACK_BASE = "Shortcut";
 export const EXTENSION = "url";
 
 /** Longest base name we will suggest, well under every filesystem limit. */
