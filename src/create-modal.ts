@@ -1,7 +1,8 @@
-import { App, ButtonComponent, Modal, Notice, TFolder, normalizePath } from "obsidian";
+import { App, ButtonComponent, Modal, Notice, TFolder } from "obsidian";
 
-import { EXTENSION, resolveCollision, suggestBaseName } from "./filename.ts";
+import { EXTENSION, suggestBaseName } from "./filename.ts";
 import { createShortcut } from "./shortcut.ts";
+import { resolveTarget } from "./target.ts";
 import { addModalField } from "./ui.ts";
 import { homeDirectory } from "./platform.ts";
 import { normalizeDestination } from "./url.ts";
@@ -112,22 +113,6 @@ export class CreateShortcutModal extends Modal {
 		}, 0);
 	}
 
-	private folderPrefix(): string {
-		return this.folder.path === "/" ? "" : this.folder.path + "/";
-	}
-
-	private exists(fileName: string): boolean {
-		const path = normalizePath(this.folderPrefix() + fileName);
-		return this.app.vault.getAbstractFileByPath(path) !== null;
-	}
-
-	/** The name the shortcut will actually get, after collision handling. */
-	private targetFileName(): string | null {
-		const base = this.name.trim();
-		if (!base) return null;
-		return resolveCollision(base, (candidate) => this.exists(candidate));
-	}
-
 	/**
 	 * Says so in advance when the name is taken, rather than letting the user
 	 * discover the numeric suffix afterwards in the file explorer. Never
@@ -136,17 +121,20 @@ export class CreateShortcutModal extends Modal {
 	private updateCollisionNotice(): void {
 		if (!this.collisionEl) return;
 
-		const base = this.name.trim();
-		const intended = base ? base + "." + EXTENSION : null;
-		const actual = this.targetFileName();
+		const target = resolveTarget(this.app, this.folder, this.name);
 
-		if (!intended || !actual || intended === actual) {
+		if (!target || !target.suffixed) {
 			this.collisionEl.hide();
 			return;
 		}
 
 		this.collisionEl.setText(
-			intended + " already exists here. This will be created as " + actual + ".",
+			this.name.trim() +
+				"." +
+				EXTENSION +
+				" already exists here. This will be created as " +
+				target.fileName +
+				".",
 		);
 		this.collisionEl.show();
 	}
@@ -163,11 +151,18 @@ export class CreateShortcutModal extends Modal {
 		}
 
 		const base = this.name.trim() || suggestBaseName(destination);
-		const fileName = resolveCollision(base, (candidate) => this.exists(candidate));
-		const path = normalizePath(this.folderPrefix() + fileName);
+		const target = resolveTarget(this.app, this.folder, base);
+
+		if (!target) {
+			new Notice("Enter a name for the shortcut.");
+			return;
+		}
 
 		try {
-			const file = await this.app.vault.create(path, createShortcut(destination));
+			const file = await this.app.vault.create(
+				target.path,
+				createShortcut(destination),
+			);
 			new Notice("Created " + file.name);
 			this.close();
 		} catch (error) {
