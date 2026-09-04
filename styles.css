@@ -26,3 +26,9 @@
 .elsewhere-invalid {
 	border-color: var(--text-error);
 }
+
+.elsewhere-collision {
+	margin-top: 0.4em;
+	margin-bottom: 0;
+	color: var(--text-warning);
+}

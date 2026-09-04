@@ -3,12 +3,13 @@ import { App, ButtonComponent, Modal, Notice, TFolder, normalizePath } from "obs
 import { EXTENSION, resolveCollision, suggestBaseName } from "./filename.ts";
 import { createShortcut } from "./shortcut.ts";
 import { addModalField } from "./ui.ts";
-import { isSupportedUrl } from "./url.ts";
+import { homeDirectory } from "./platform.ts";
+import { normalizeDestination } from "./url.ts";
 
 /**
  * The confirmation-first creation flow (decisions D-002 and D-003).
  *
- * A valid clipboard URL prefills the destination and produces a suggested
+ * A valid clipboard destination prefills the URL and produces a suggested
  * name, which is fully selected so typing replaces it. Without one, the URL
  * field takes focus and the name is suggested once a valid URL is entered.
  */
@@ -23,6 +24,7 @@ export class CreateShortcutModal extends Modal {
 
 	private nameInput: HTMLInputElement | null = null;
 	private urlInput: HTMLInputElement | null = null;
+	private collisionEl: HTMLElement | null = null;
 
 	constructor(app: App, folder: TFolder, clipboardUrl: string) {
 		super(app);
@@ -36,10 +38,10 @@ export class CreateShortcutModal extends Modal {
 
 		this.titleEl.setText("New shortcut");
 
-		const hasClipboardUrl = isSupportedUrl(this.clipboardUrl);
-		if (hasClipboardUrl) {
+		const clipboardDestination = normalizeDestination(this.clipboardUrl, homeDirectory());
+		if (clipboardDestination) {
 			this.url = this.clipboardUrl.trim();
-			this.name = suggestBaseName(this.url);
+			this.name = suggestBaseName(clipboardDestination);
 		}
 
 		const nameField = addModalField(contentEl, "Name", "Shortcut");
@@ -48,20 +50,25 @@ export class CreateShortcutModal extends Modal {
 		nameField.input.addEventListener("input", () => {
 			this.name = nameField.input.value;
 			this.nameIsSuggested = false;
+			this.updateCollisionNotice();
 		});
 
-		const urlField = addModalField(contentEl, "URL", "https://example.com/");
+		const urlField = addModalField(
+			contentEl,
+			"URL",
+			"https://example.com/ or /Users/you/file.pdf",
+		);
 		this.urlInput = urlField.input;
 		urlField.input.value = this.url;
 		urlField.input.addEventListener("input", () => {
 			this.url = urlField.input.value;
-			if (this.nameIsSuggested && isSupportedUrl(this.url)) {
-				this.name = suggestBaseName(this.url);
+			const destination = normalizeDestination(this.url, homeDirectory());
+			if (this.nameIsSuggested && destination) {
+				this.name = suggestBaseName(destination);
 				nameField.input.value = this.name;
 			}
-			urlField.setInvalid(
-				this.url.trim().length > 0 && !isSupportedUrl(this.url),
-			);
+			urlField.setInvalid(this.url.trim().length > 0 && !destination);
+			this.updateCollisionNotice();
 		});
 
 		contentEl.createEl("p", {
@@ -70,6 +77,11 @@ export class CreateShortcutModal extends Modal {
 				(this.folder.path === "/" ? "vault root" : this.folder.path),
 			cls: "elsewhere-subtle elsewhere-destination",
 		});
+
+		this.collisionEl = contentEl.createEl("p", {
+			cls: "elsewhere-subtle elsewhere-collision",
+		});
+		this.collisionEl.hide();
 
 		const buttons = contentEl.createDiv({ cls: "modal-button-container" });
 
@@ -88,8 +100,10 @@ export class CreateShortcutModal extends Modal {
 			return false;
 		});
 
+		this.updateCollisionNotice();
+
 		window.setTimeout(() => {
-			if (hasClipboardUrl && this.nameInput) {
+			if (clipboardDestination && this.nameInput) {
 				this.nameInput.focus();
 				this.nameInput.select();
 			} else {
@@ -98,27 +112,62 @@ export class CreateShortcutModal extends Modal {
 		}, 0);
 	}
 
-	private async create(): Promise<void> {
-		const url = this.url.trim();
+	private folderPrefix(): string {
+		return this.folder.path === "/" ? "" : this.folder.path + "/";
+	}
 
-		if (!isSupportedUrl(url)) {
-			new Notice("Enter a valid URL, including https:// or another scheme.");
+	private exists(fileName: string): boolean {
+		const path = normalizePath(this.folderPrefix() + fileName);
+		return this.app.vault.getAbstractFileByPath(path) !== null;
+	}
+
+	/** The name the shortcut will actually get, after collision handling. */
+	private targetFileName(): string | null {
+		const base = this.name.trim();
+		if (!base) return null;
+		return resolveCollision(base, (candidate) => this.exists(candidate));
+	}
+
+	/**
+	 * Says so in advance when the name is taken, rather than letting the user
+	 * discover the numeric suffix afterwards in the file explorer. Never
+	 * blocks, and never overwrites.
+	 */
+	private updateCollisionNotice(): void {
+		if (!this.collisionEl) return;
+
+		const base = this.name.trim();
+		const intended = base ? base + "." + EXTENSION : null;
+		const actual = this.targetFileName();
+
+		if (!intended || !actual || intended === actual) {
+			this.collisionEl.hide();
+			return;
+		}
+
+		this.collisionEl.setText(
+			intended + " already exists here. This will be created as " + actual + ".",
+		);
+		this.collisionEl.show();
+	}
+
+	private async create(): Promise<void> {
+		const destination = normalizeDestination(this.url, homeDirectory());
+
+		if (!destination) {
+			new Notice(
+				"Enter a URL with a scheme, such as https://, or an absolute file path.",
+			);
 			this.urlInput?.focus();
 			return;
 		}
 
-		const base = this.name.trim() || suggestBaseName(url);
-		const folderPath = this.folder.path === "/" ? "" : this.folder.path + "/";
-
-		const fileName = resolveCollision(base, (candidate) => {
-			const path = normalizePath(folderPath + candidate);
-			return this.app.vault.getAbstractFileByPath(path) !== null;
-		});
-
-		const path = normalizePath(folderPath + fileName);
+		const base = this.name.trim() || suggestBaseName(destination);
+		const fileName = resolveCollision(base, (candidate) => this.exists(candidate));
+		const path = normalizePath(this.folderPrefix() + fileName);
 
 		try {
-			const file = await this.app.vault.create(path, createShortcut(url));
+			const file = await this.app.vault.create(path, createShortcut(destination));
 			new Notice("Created " + file.name);
 			this.close();
 		} catch (error) {

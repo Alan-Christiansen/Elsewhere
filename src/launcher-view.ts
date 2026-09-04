@@ -28,7 +28,7 @@ export class ShortcutLauncherView extends TextFileView {
 	}
 
 	getDisplayText(): string {
-		return this.file ? this.file.basename : "URL note";
+		return this.file ? this.file.basename : "Shortcut";
 	}
 
 	getIcon(): string {

@@ -2,7 +2,8 @@ import { App, ButtonComponent, Modal, Notice, TFile } from "obsidian";
 
 import { parseShortcut, withUrl } from "./shortcut.ts";
 import { addModalField } from "./ui.ts";
-import { isSupportedUrl } from "./url.ts";
+import { homeDirectory } from "./platform.ts";
+import { normalizeDestination } from "./url.ts";
 
 /**
  * Editing an existing shortcut's destination (decision D-005: editing is a
@@ -47,7 +48,7 @@ export class EditShortcutModal extends Modal {
 		destination.input.addEventListener("input", () => {
 			this.value = destination.input.value;
 			destination.setInvalid(
-				this.value.trim().length > 0 && !isSupportedUrl(this.value),
+				this.value.trim().length > 0 && !normalizeDestination(this.value, homeDirectory()),
 			);
 		});
 
@@ -80,10 +81,12 @@ export class EditShortcutModal extends Modal {
 	}
 
 	private async save(): Promise<void> {
-		const next = this.value.trim();
+		const next = normalizeDestination(this.value, homeDirectory());
 
-		if (!isSupportedUrl(next)) {
-			new Notice("That does not look like a valid URL.");
+		if (!next) {
+			new Notice(
+				"Enter a URL with a scheme, such as https://, or an absolute file path.",
+			);
 			return;
 		}
 

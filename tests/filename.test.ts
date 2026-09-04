@@ -197,3 +197,18 @@ test("a trailing hash is trimmed from a readable slug", () => {
 		"notion.so - My-Page",
 	);
 });
+
+test("local filenames are used as-is, not judged as URL slugs", () => {
+	assert.equal(
+		suggestBaseName("file:///C%3A/Users/example/Q3%20Report.xlsx"),
+		"Q3 Report.xlsx",
+	);
+	assert.equal(
+		suggestBaseName("file:///Users/example/2026%20Budget%20v2.numbers"),
+		"2026 Budget v2.numbers",
+	);
+	assert.equal(
+		suggestBaseName("file:///Users/example/IMG_20260903.HEIC"),
+		"IMG_20260903.HEIC",
+	);
+});

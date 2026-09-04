@@ -142,6 +142,15 @@ function decodeSegment(segment: string): string {
  * are all uninformative but `spreadsheets` describes what the shortcut points
  * at. Walking back finds it.
  */
+/** The final path segment, decoded, with no judgement applied. */
+function lastPathSegment(pathname: string): string | null {
+	const segments = pathname
+		.split("/")
+		.filter((segment) => segment.length > 0)
+		.map(decodeSegment);
+	return segments.length > 0 ? segments[segments.length - 1] : null;
+}
+
 function lastMeaningfulSegment(pathname: string): string | null {
 	const segments = pathname
 		.split("/")
@@ -170,7 +179,10 @@ export function suggestBaseName(rawUrl: string): string {
 	}
 
 	if (parsed.protocol === "file:") {
-		const name = lastMeaningfulSegment(parsed.pathname);
+		// A local file already has a human-chosen name. Use it directly:
+		// the identifier heuristics below are tuned for URL slugs and would
+		// wrongly reject real filenames like "Q3 Report.xlsx".
+		const name = lastPathSegment(parsed.pathname);
 		return (name ? sanitizeBase(name) : "") || FALLBACK_BASE;
 	}
 
