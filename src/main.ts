@@ -34,7 +34,7 @@ export default class ElsewherePlugin extends Plugin {
 
 		this.addCommand({
 			id: "new-shortcut",
-			name: "New shortcut",
+			name: "New shortcut...",
 			callback: () => void this.openCreateModal(this.defaultFolder()),
 		});
 
@@ -43,7 +43,7 @@ export default class ElsewherePlugin extends Plugin {
 				if (target instanceof TFolder) {
 					menu.addItem((item) =>
 						item
-							.setTitle("New shortcut")
+							.setTitle("New shortcut...")
 							.setIcon("link")
 							.onClick(() => void this.openCreateModal(target)),
 					);
@@ -54,7 +54,7 @@ export default class ElsewherePlugin extends Plugin {
 
 				menu.addItem((item) =>
 					item
-						.setTitle("New shortcut")
+						.setTitle("New shortcut...")
 						.setIcon("link")
 						.onClick(() =>
 							void this.openCreateModal(this.parentOf(target)),
