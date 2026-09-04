@@ -9,13 +9,37 @@ import {
 import { CreateShortcutModal } from "./create-modal.ts";
 import { EditShortcutModal } from "./edit-modal.ts";
 import { EXTENSION } from "./filename.ts";
+import { openDestination } from "./launch.ts";
+import { LauncherHistory } from "./launcher-history.ts";
 import { ShortcutLauncherView, VIEW_TYPE_SHORTCUT } from "./launcher-view.ts";
+import { parseShortcut } from "./shortcut.ts";
+
+const FILE_EXPLORER_ITEM = ".nav-file-title[data-path]";
+const FILE_EXPLORER = ".nav-files-container";
 
 export default class ElsewherePlugin extends Plugin {
+	private readonly launcherHistory = new LauncherHistory(VIEW_TYPE_SHORTCUT);
+
 	async onload(): Promise<void> {
 		this.registerView(
 			VIEW_TYPE_SHORTCUT,
-			(leaf) => new ShortcutLauncherView(leaf),
+			(leaf) => new ShortcutLauncherView(leaf, this.launcherHistory),
+		);
+
+		this.app.workspace.onLayoutReady(() => this.rememberOpenViews());
+		this.registerEvent(
+			this.app.workspace.on("active-leaf-change", (leaf) => {
+				if (leaf) this.launcherHistory.remember(leaf);
+			}),
+		);
+		this.registerEvent(
+			this.app.workspace.on("file-open", () => {
+				const leaf = this.app.workspace.getMostRecentLeaf();
+				if (leaf) this.launcherHistory.remember(leaf);
+			}),
+		);
+		this.registerEvent(
+			this.app.workspace.on("layout-change", () => this.rememberOpenViews()),
 		);
 
 		// Makes .url files visible in the File Explorer without requiring the
@@ -31,6 +55,22 @@ export default class ElsewherePlugin extends Plugin {
 				10000,
 			);
 		}
+
+		// Extension registration makes .url files visible, but Obsidian normally
+		// opens a registered extension in the active leaf. Handle File Explorer
+		// activation before that navigation begins so no tab ever changes.
+		this.registerDomEvent(
+			document,
+			"click",
+			(event) => this.handleExplorerClick(event),
+			{ capture: true },
+		);
+		this.registerDomEvent(
+			document,
+			"keydown",
+			(event) => this.handleExplorerKeydown(event),
+			{ capture: true },
+		);
 
 		this.addCommand({
 			id: "new-shortcut",
@@ -98,5 +138,72 @@ export default class ElsewherePlugin extends Plugin {
 		}
 
 		new CreateShortcutModal(this.app, folder, clipboard).open();
+	}
+
+	private handleExplorerClick(event: MouseEvent): void {
+		if (event.button !== 0) return;
+		const file = this.shortcutFromExplorerTarget(event.target, false);
+		if (!file) return;
+
+		this.consumeActivation(event);
+		void this.launchShortcut(file);
+	}
+
+	private handleExplorerKeydown(event: KeyboardEvent): void {
+		if (event.key !== "Enter" && event.key !== "ArrowRight") return;
+
+		const target = event.target as Element | null;
+		if (target?.closest("input, textarea, [contenteditable='true']")) return;
+
+		const file = this.shortcutFromExplorerTarget(event.target, true);
+		if (!file) return;
+
+		this.consumeActivation(event);
+		if (!event.repeat) void this.launchShortcut(file);
+	}
+
+	private shortcutFromExplorerTarget(
+		target: EventTarget | null,
+		useSelectedItem: boolean,
+	): TFile | null {
+		const element = target as Element | null;
+		if (!element || typeof element.closest !== "function") return null;
+
+		let item = element.closest(FILE_EXPLORER_ITEM);
+		if (!item && useSelectedItem) {
+			const explorer = element.closest(FILE_EXPLORER);
+			item = explorer?.querySelector(`${FILE_EXPLORER_ITEM}.is-active`) ?? null;
+		}
+
+		const path = item?.getAttribute("data-path");
+		if (!path) return null;
+
+		const candidate = this.app.vault.getAbstractFileByPath(path);
+		return candidate instanceof TFile && candidate.extension === EXTENSION
+			? candidate
+			: null;
+	}
+
+	private consumeActivation(event: Event): void {
+		event.preventDefault();
+		event.stopPropagation();
+		event.stopImmediatePropagation();
+	}
+
+	private async launchShortcut(file: TFile): Promise<void> {
+		try {
+			const data = await this.app.vault.cachedRead(file);
+			const { url } = parseShortcut(data);
+			await openDestination(url);
+		} catch (error) {
+			console.error("Elsewhere: could not read shortcut", error);
+			new Notice("Could not open this shortcut.");
+		}
+	}
+
+	private rememberOpenViews(): void {
+		this.app.workspace.iterateAllLeaves((leaf) => {
+			this.launcherHistory.remember(leaf);
+		});
 	}
 }

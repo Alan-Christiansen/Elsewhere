@@ -1,6 +1,7 @@
 import { TFile, TextFileView, WorkspaceLeaf } from "obsidian";
 
 import { openDestination } from "./launch.ts";
+import { LauncherHistory } from "./launcher-history.ts";
 import { parseShortcut } from "./shortcut.ts";
 
 export const VIEW_TYPE_SHORTCUT = "elsewhere-shortcut-view";
@@ -11,15 +12,17 @@ export const VIEW_TYPE_SHORTCUT = "elsewhere-shortcut-view";
  * tab: decision D-005 says clicking a shortcut should open its destination,
  * exactly as it does in Finder and Explorer.
  *
- * So this view launches the destination and immediately detaches its own
- * leaf, leaving no tab behind. Verified on macOS: only an explicit click or
- * the right-arrow key opens a file, so ordinary up/down navigation in the
- * File Explorer does not fire a launch.
+ * So this view launches the destination and restores whatever that leaf held
+ * before Obsidian navigated it to the shortcut. If Obsidian created a new leaf
+ * specifically for the shortcut, the empty launcher leaf is detached instead.
  */
 export class ShortcutLauncherView extends TextFileView {
 	data = "";
 
-	constructor(leaf: WorkspaceLeaf) {
+	constructor(
+		leaf: WorkspaceLeaf,
+		private readonly launcherHistory: LauncherHistory,
+	) {
 		super(leaf);
 	}
 
@@ -53,15 +56,13 @@ export class ShortcutLauncherView extends TextFileView {
 		const { url } = parseShortcut(this.data);
 		void openDestination(url);
 
-		// Close the tab we were obliged to open. Deferred so that Obsidian
-		// finishes its own open sequence before the leaf goes away.
+		// Let Obsidian finish its open sequence, then put back the previous view.
+		// A genuinely new leaf has no previous view and can be safely detached.
 		const leaf = this.leaf;
 		window.setTimeout(() => {
-			try {
-				leaf.detach();
-			} catch (error) {
-				console.error("Elsewhere: could not close the launcher tab", error);
-			}
+			void this.launcherHistory.restoreOrDetach(leaf).catch((error) => {
+				console.error("Elsewhere: could not restore the previous tab", error);
+			});
 		}, 0);
 	}
 }
